@@ -1,0 +1,60 @@
+### video 26
+### create new index 'series' with parent child relation ship
+PUT http://localhost:9200/series HTTP/1.1
+Content-Type: application/json
+
+{
+	"mappings": {
+		"properties":{
+			"film_to_franchise": {
+				"type": "join",
+				"relations": {
+					"franchise": "film"
+				}
+			}
+		}
+	}
+}
+
+
+### bulk insert from file
+PUT http://localhost:9200/_bulk?pretty HTTP/1.1
+Content-Type: application/json
+
+< ./series.json
+
+
+### search by parent (films in franchise)
+GET http://localhost:9200/series/_search?pretty HTTP/1.1
+Content-Type: application/json
+
+{
+	"query": {
+		"has_parent": {
+			"parent_type": "franchise",
+			"query": {
+				"match": {
+					"title": "Star Wars"
+				}
+			}
+		}
+	}
+}
+
+
+### search by child (franchise of film)
+GET http://localhost:9200/series/_search?pretty HTTP/1.1
+Content-Type: application/json
+
+{
+	"query": {
+		"has_child": {
+			"type": "film",
+			"query": {
+				"match": {
+					"title": "The Force Awakens"
+				}
+			}
+		}
+	}
+}

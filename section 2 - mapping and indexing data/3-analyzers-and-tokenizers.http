@@ -1,0 +1,78 @@
+### video 24
+### search with query body, 
+### partial results will also be returned (will have lower score)
+GET http://localhost:9200/movies/_search?pretty HTTP/1.1
+Content-Type: application/json
+
+{
+	"query": {
+		"match": {
+			"title": "Star Trek"
+		}
+	}
+}
+
+
+### search with match phrase
+GET http://localhost:9200/movies/_search?pretty HTTP/1.1
+Content-Type: application/json
+
+{
+	"query": {
+		"match_phrase": {
+			"genre": "sci"
+		}
+	}
+}
+
+
+### delete entire index
+DELETE http://localhost:9200/movies HTTP/1.1
+
+
+### redefine index mapping with more descriptive types
+### set genre to keyword - only return exact matches no analyzer will run on field
+### set title to text - analyzer will run on feild, allow partial matches
+### speccify analyzer to handle case sensitivity, stemming, stopwords, synonyms etc
+PUT http://localhost:9200/movies HTTP/1.1
+Content-Type: application/json
+
+{
+	"mappings": {
+		"properties":{
+			"id": {
+				"type": "integer"
+			},
+			"year": {
+				"type": "date"
+			},
+			"genre": {
+				"type": "keyword"
+			},
+			"title": {
+				"type": "text",
+				"analyzer": "english"
+			}
+		}
+	}
+}
+
+
+### bulk insert from file
+PUT http://localhost:9200/_bulk?pretty HTTP/1.1
+Content-Type: application/json
+
+< ./movies.json
+
+
+### now only exact phrase will work for genre feild
+GET http://localhost:9200/movies/_search?pretty HTTP/1.1
+Content-Type: application/json
+
+{
+	"query": {
+		"match": {
+			"genre": "Sci-Fi"
+		}
+	}
+}

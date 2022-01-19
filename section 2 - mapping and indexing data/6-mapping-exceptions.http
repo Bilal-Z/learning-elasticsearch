@@ -1,0 +1,192 @@
+### video 28
+### SCENARIO: logging microservice logs to index
+### 1. create index of mocroservice-logs with following mappings
+PUT http://localhost:9200/microservice-logs
+Content-Type: application/json
+
+{
+   "mappings": {
+       "properties": {
+           "timestamp": { "type": "date"  },
+           "service": { "type": "keyword" },
+           "host_ip": { "type": "ip" },
+           "port": { "type": "integer" },
+           "message": { "type": "text" }
+       }
+   }
+}
+
+
+
+### 2. data with correct mapping
+POST http://localhost:9200/microservice-logs/_doc?pretty
+Content-Type: application/json
+
+{
+	"timestamp": "2020-04-11T12:34:56.789Z",
+	"service": "ABC",
+	"host_ip": "10.0.2.15",
+	"port": 12345,
+	"message": "Started!"
+}
+
+
+### 3. incorrect port type (string instead of number)
+### will work since string of numbers
+POST http://localhost:9200/microservice-logs/_doc?pretty
+Content-Type: application/json
+
+{
+	"timestamp": "2020-04-11T12:34:56.789Z",
+	"service": "XYZ",
+	"host_ip": "10.0.2.15",
+	"port": "15000",
+	"message": "Hello!"
+}
+
+
+### 4. pert type as string with non numeric value
+### will throw mapper_parsing_exception
+POST http://localhost:9200/microservice-logs/_doc?pretty
+Content-Type: application/json
+
+{
+	"timestamp": "2020-04-11T12:34:56.789Z",
+	"service": "XYZ",
+	"host_ip": "10.0.2.15",
+	"port": "NONE",
+	"message": "I am not well!"
+}
+
+
+
+### 5. need to set ignore_malformed parameter 
+### not a dynamic parameter, needs to be set at index creation or,
+### need to close the index to change settings then reopen
+POST http://localhost:9200/microservice-logs/_close
+
+### set ignore_malformed to true
+PUT http://localhost:9200/microservice-logs/_settings
+Content-Type: application/json
+
+{
+   "index.mapping.ignore_malformed": true
+}
+
+###reopen index
+POST http://localhost:9200/microservice-logs/_open
+
+
+### 6. retry indexing malformed document
+### will work, (save returned id)
+POST http://localhost:9200/microservice-logs/_doc?pretty
+Content-Type: application/json
+
+{
+	"timestamp": "2020-04-11T12:34:56.789Z",
+	"service": "XYZ",
+	"host_ip": "10.0.2.15",
+	"port": "NONE",
+	"message": "I am not well!" 
+}
+
+### get back inserted document by id (insert id from prev step)
+### port feild will be set as ignored
+GET http://localhost:9200/microservice-logs/_doc/JrMRcX4BTZRFQcONpN1x?pretty
+
+
+
+### 7. try to insert doc with nested object in message feild
+### will throw mapper_parsing_exception
+### ignore_malformed can not handle JSON objects on input
+POST http://localhost:9200/microservice-logs/_doc?pretty
+Content-Type: application/json
+
+{
+	"timestamp": "2020-04-11T12:34:56.789Z",
+	"service": "ABC",
+	"host_ip": "10.0.2.15",
+	"port": 12345,
+	"message": {
+		"data": {
+			"received":"here"
+		}
+	}
+}
+
+### 8. introduce new dynamic feild payload to handle nested objects
+POST http://localhost:9200/microservice-logs/_doc?pretty
+Content-Type: application/json
+
+{
+	"timestamp": "2020-04-11T12:34:56.789Z",
+	"service": "ABC",
+	"host_ip": "10.0.2.15",
+	"port": 12345,
+	"message": "Received...",
+	"payload": {
+		"data": {
+			"received":"here"
+		}
+	}
+}
+
+
+### check mapping. dynamic mapping works but there is a trap
+### payload property of a different object might have different feilds
+GET http://localhost:9200/microservice-logs/_mapping?pretty
+
+
+### 9. document with different structure of payload data
+### will throw mapper_parsing_exception
+### engineers need to be aware of mapping mechanisms
+### documentation feild mapping should availible across team
+### DEAD QUEUE PATTERN store failed docs in seperate queue
+### handled on app level or use LogStash DL Queue
+POST http://localhost:9200/microservice-logs/_doc?pretty
+Content-Type: application/json
+
+{
+	"timestamp": "2020-04-11T12:34:56.789Z",
+	"service": "ABC",
+	"host_ip": "10.0.2.15",
+	"port": 12345,
+	"message": "Received...",
+	"payload": {
+		"data": {
+			"received": {
+				"even": "more"
+			}
+		}
+	}
+}
+
+
+
+### 10. limit of mapping default is 1000
+### simulate exception: use program jq to create 
+### a JSON object with 1001 feilds:
+###---
+### 1. sudo apt-get install jq
+###
+### 2. thousandone_fields_json=$(echo {1..1001..1} | jq -Rn '( input | split(" ") ) as $nums | $nums[] | . as $key | [{key:($key|tostring),value:($key|tonumber)}] | from_entries' | jq -cs 'add')
+###
+### 3. echo "$thousandone_fields_json"
+###---
+### save output to json file
+### try to create index with thousandandone_feilds.json
+### will throw mapper_parsing_exception caused by illegal_argument_exception
+### "Limit of total fields [1000] has been exceeded..."
+POST http://localhost:9200/big-objects/_doc?pretty
+Content-Type: application/json
+
+< ./thousandandone_feilds.json
+
+
+### change total feilds limit
+PUT http://localhost:9200/big-objects/_settings
+Content-Type: application/json
+
+{
+   "index.mapping.total_fields.limit": 1001
+}

@@ -1,0 +1,118 @@
+### video 27
+### 1. insert complicated date
+PUT http://127.0.0.1:9200/demo-default/_doc/1
+Content-Type: application/json
+
+{
+  "message": "[5592:1:0309/123054.737712:ERROR:child_process_sandbox_support_impl_linux.cc(79)] FontService unique font name matching request did not receive a response.",
+  "fileset": {
+    "name": "syslog"
+  },
+  "process": {
+    "name": "org.gnome.Shell.desktop",
+    "pid": 3383
+  },
+  "@timestamp": "2020-03-09T18:00:54.000+05:30",
+  "host": {
+    "hostname": "bionic",
+    "name": "bionic"
+  }
+}
+
+
+### 2. view mapping (is long and complicated) save to es-cluster-state.json
+GET http://127.0.0.1:9200/demo-default/_mapping?pretty=true
+
+
+### 3. get cluster state (index mappiings, node details etc)
+GET http://127.0.0.1:9200/_cluster/state?pretty=true
+
+### 4. create new index flattened
+PUT http://127.0.0.1:9200/demo-flattened
+
+### 5. define mapping of host feild as flattened
+PUT http://127.0.0.1:9200/demo-flattened/_mapping
+Content-Type: application/json
+
+{
+  "properties": {
+    "host": {
+      "type": "flattened"
+    }
+  }
+}
+
+### 6. insert data to index
+PUT http://127.0.0.1:9200/demo-flattened/_doc/1
+Content-Type: application/json
+
+{
+  "message": "[5592:1:0309/123054.737712:ERROR:child_process_sandbox_support_impl_linux.cc(79)] FontService unique font name matching request did not receive a response.",
+  "fileset": {
+    "name": "syslog"
+  },
+  "process": {
+    "name": "org.gnome.Shell.desktop",
+    "pid": 3383
+  },
+  "@timestamp": "2020-03-09T18:00:54.000+05:30",
+  "host": {
+    "hostname": "bionic",
+    "name": "bionic"
+  }
+}
+
+### 7. see mappings
+GET http://127.0.0.1:9200/demo-flattened/_mapping?pretty=true
+
+### 8. update document with new subfeilds in host feild
+POST http://127.0.0.1:9200/demo-flattened/_update/1
+Content-Type: application/json
+
+{
+    "doc" : {
+        "host" : {
+          "osVersion": "Bionic Beaver",
+          "osArchitecture":"x86_64"
+        }
+    }
+}
+
+### 9. flattened feilds dont have analyzers and tokenizers applied to their keys 
+###(treated as keywords)
+GET http://127.0.0.1:9200/demo-flattened/_search?pretty=true
+Content-Type: application/json
+
+{
+  "query": {
+    "term": {
+      "host": "Bionic Beaver"
+    }
+  }
+}
+
+### 10. search inner object with dot notation
+GET http://127.0.0.1:9200/demo-flattened/_search?pretty=true
+Content-Type: application/json
+
+{
+  "query": {
+    "term": {
+      "host.osVersion": "Bionic Beaver"
+    }
+  }
+}
+
+
+### 11. partial match will not work results not analyzed
+GET http://127.0.0.1:9200/demo-flattened/_search?pretty=true
+Content-Type: application/json
+
+{
+  "query": {
+    "term": {
+      "host.osVersion": "Beaver"
+    }
+  }
+}
+

@@ -1,0 +1,73 @@
+### videos 13 - 22
+### create index mapping
+PUT http://localhost:9200/movies HTTP/1.1
+Content-Type: application/json
+
+{
+	"mappings": {
+		"properties":{
+			"year": {
+				"type": "date"
+			}
+		}
+	}
+}
+
+
+### get index mapping
+GET http://localhost:9200/movies/_mapping HTTP/1.1
+
+
+### insert(index) a single movie
+PUT http://localhost:9200/movies/_doc/109487 HTTP/1.1
+Content-Type: application/json
+
+{
+	"genre": ["IMAX", "Sci-Fi"],
+	"title": "Interstellar",
+	"year": 2014
+}
+
+### get every item in index
+GET http://localhost:9200/movies/_search?pretty HTTP/1.1
+
+
+### insert lots of documents at once
+PUT http://localhost:9200/_bulk?pretty HTTP/1.1
+Content-Type: application/json
+
+< ./movies.json
+
+
+### update document by specifying all feilds (PUT)
+PUT http://localhost:9200/movies/_doc/109487?pretty HTTP/1.1
+Content-Type: application/json
+
+{
+	"genre": ["IMAX", "Sci-Fi"],
+	"title": "Steller Interstellar",
+	"year": 2014
+}
+
+
+### get single item in index
+GET http://localhost:9200/movies/_doc/109487?pretty HTTP/1.1
+
+
+### Partial update (POST to /:index/_doc/:id/_update)
+POST http://localhost:9200/movies/_doc/109487/_update HTTP/1.1
+Content-Type: application/json
+
+{
+	"doc": {
+		"title": "Interstellar"
+	}
+}
+
+
+### search query (search for the dark knight)
+GET http://localhost:9200/movies/_search?q=Dark HTTP/1.1
+
+
+### delete a document
+DELETE http://localhost:9200/movies/_doc/58559?pretty HTTP/1.1
