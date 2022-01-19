@@ -1,0 +1,14 @@
+### video 37
+### complex filter
+GET http://localhost:9200/movies/_search?pretty
+Content-Type: application/json
+
+{
+	"query": {
+		"bool": {
+			"must": { "match": { "genre": "Sci-Fi" } },
+			"must_not": { "match": { "title": "trek" } },
+			"filter": { "range": { "year": { "gte": 2010, "lt": 2015 } } }
+		}
+	}
+}

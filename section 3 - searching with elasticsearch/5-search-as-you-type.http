@@ -1,0 +1,18 @@
+### videos 41-44
+### SEARCH AS YOU TYPE
+### query time search as you type
+GET http://localhost:9200/movies/_search?pretty
+Content-Type: application/json
+
+{
+	"query": {
+		"match_phrase_prefix": {
+			"title": {
+				"query": "star t",
+				"slop": 10
+			}
+		}
+	}
+}
+
+### index time search as you type

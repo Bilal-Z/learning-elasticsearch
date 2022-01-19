@@ -1,0 +1,85 @@
+### videos 31 - 33
+### Query Lite (query param) syntax
+GET http://localhost:9200/movies/_search?q=title:star&pretty
+
+### more complex query
+GET http://localhost:9200/movies/_search?q=+year>2010+title:trek&pretty
+
+
+### search with quer in request body
+GET http://localhost:9200/movies/_search?pretty
+Content-Type: application/json
+
+{
+	"query": {
+		"match": {
+			"title": "star"
+		}
+	}
+}
+
+### search with query and filter
+GET http://localhost:9200/movies/_search?pretty
+Content-Type: application/json
+
+{
+	"query": {
+		"bool": {
+			"must": {
+				"term": {
+					"title": "trek"
+				}
+			},
+			"filter": {
+				"range": {
+					"year": {
+						"gte": 2010
+					}
+				}
+			}
+		}
+	}
+}
+
+### phrase search
+GET http://localhost:9200/movies/_search?pretty
+Content-Type: application/json
+
+{
+	"query": {
+		"match_phrase": {
+			"title": "star wars"
+		}
+	}
+}
+
+
+### phrase search with slop
+GET http://localhost:9200/movies/_search?pretty
+Content-Type: application/json
+
+{
+	"query": {
+		"match_phrase": {
+			"title": {
+				"query": "star beyond",
+				"slop": 1
+			}
+		}
+	}
+}
+
+### proximity query, sorted by closeness between terns
+GET http://localhost:9200/movies/_search?pretty
+Content-Type: application/json
+
+{
+	"query": {
+		"match_phrase": {
+			"title": {
+				"query": "star beyond",
+				"slop": 100
+			}
+		}
+	}
+}
