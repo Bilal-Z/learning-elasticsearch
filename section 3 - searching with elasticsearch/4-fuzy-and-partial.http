@@ -38,7 +38,6 @@ Content-Type: application/json
 {
 	"mappings": {
 		"properties":{
-			
 			"year": {
 				"type": "text"
 			}

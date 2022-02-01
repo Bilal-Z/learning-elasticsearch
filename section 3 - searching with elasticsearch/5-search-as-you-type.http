@@ -1,6 +1,6 @@
 ### videos 41-44
 ### SEARCH AS YOU TYPE
-### query time search as you type
+### (A) query time search as you type
 GET http://localhost:9200/movies/_search?pretty
 Content-Type: application/json
 
@@ -15,4 +15,185 @@ Content-Type: application/json
 	}
 }
 
-### index time search as you type
+### (B) index time search as you type
+### edge N-grams
+
+### 1. Delete index
+DELETE http://localhost:9200/movies
+
+### 2. build edge N-grams for index time
+PUT http://localhost:9200/movies
+Content-Type: application/json
+
+{
+	"settings": {
+		"analysis": {
+			"filter": {
+				"autocomplete_filter": {
+					"type": "edge_ngram",
+					"min_gram": 1,
+					"max_gram": 20
+				}
+			},
+			"analyzer": {
+				"autocomplete": {
+					"type": "custom",
+					"tokenizer": "standard",
+					"filter": [
+						"lowercase",
+						"autocomplete_filter"
+					]
+				}
+			}
+		}
+	}
+}
+
+### 3. test analyzer
+GET http://localhost:9200/movies/_analyze?pretty
+Content-Type: application/json
+
+{
+	"analyzer": "autocomplete",
+	"text": "sta"
+}
+
+### 4. set analyzer to title property
+PUT http://localhost:9200/movies/_mapping?pretty
+Content-Type: application/json
+
+{
+	"properties":{
+			"title": {
+				"type": "text",
+				"analyzer": "autocomplete"
+			}
+		}
+}
+
+### 5. re-index data
+PUT http://localhost:9200/_bulk?pretty HTTP/1.1
+Content-Type: application/json
+
+< ../section 2 - mapping and indexing data/movies.json
+
+### 6. test index
+### wont work need to use standars analyzer at query time
+GET http://localhost:9200/movies/_search?pretty
+Content-Type: application/json
+
+{
+	"query": {
+		"match": {
+			"title": "sta"
+		}
+	}
+}
+
+
+### 7. this works
+GET http://localhost:9200/movies/_search?pretty
+Content-Type: application/json
+
+{
+	"query": {
+		"match": {
+			"title": {
+				"query": "sta",
+				"analyzer": "standard"
+			}
+		}
+	}
+}
+
+### (C) search-as-you-type data type
+
+### 1. Use analyze api
+POST http://localhost:9200/movies/_analyze?pretty
+Content-Type: application/json
+
+{
+   "tokenizer" : "standard",
+   "filter": [{"type":"edge_ngram", "min_gram": 1, "max_gram": 4}],
+   "text" : "Star"
+}
+
+
+### 2. create new index for autocomplete
+PUT http://localhost:9200/autocomplete
+Content-Type: application/json
+
+{
+   "mappings": {
+       "properties": {
+           "title": {
+               "type": "search_as_you_type"
+           },
+           "genre": {
+               "type": "search_as_you_type"
+           }
+       }
+   }
+}
+
+### 3. reindex data from movies index to autocomplete index
+POST http://localhost:9200/_reindex?pretty
+Content-Type: application/json
+
+{
+ "source": {
+   "index": "movies"
+ },
+ "dest": {
+   "index": "autocomplete"
+ }
+}
+
+### check mapping of autocomplete index
+GET http://localhost:9200/autocomplete/_mapping?pretty
+
+
+### 4. multi_match query searches over multiple feilds at the same time
+### bool_prefix gives results of search words in any order but same order as query higher rated
+GET http://localhost:9200/autocomplete/_search?pretty
+Content-Type: application/json
+
+{
+   "size": 5,
+   "query": {
+       "multi_match": {
+           "query": "Sta",
+           "type": "bool_prefix",
+           "fields": [
+               "title",
+               "title._2gram",
+               "title._3gram"
+           ]
+       }
+   }
+}
+
+
+# 5. test search as you type in terminal
+INPUT=''
+while true
+do
+ IFS= read -rsn1 char
+ INPUT=$INPUT$char
+ echo $INPUT
+ curl -H "Content-Type: application/json" --silent --request GET 'http://localhost:9200/autocomplete/_search' \
+ --data-raw '{
+     "size": 5,
+     "query": {
+         "multi_match": {
+             "query": "'"$INPUT"'",
+             "type": "bool_prefix",
+             "fields": [
+                 "title",
+                 "title._2gram",
+                 "title._3gram"
+             ]
+         }
+     }
+ }' | jq .hits.hits[]._source.title | grep -i "$INPUT"
+done
