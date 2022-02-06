@@ -1,0 +1,42 @@
+# IMPORTING DATA WITH A SCRIPT
+# 1. get movie lens db (terminal)
+# wget http://files.grouplens.org/datasets/movielens/ml-latest-small.zip
+# 2. unzip file
+# unzip ml-latest-small.zip
+# 3. get python script
+# wget media.sundog-soft.com/es7/MoviesToJson.py
+# 4. run script
+# python3 MoviesToJson.py > moremovies.json
+
+### 5. remove current index
+DELETE http://localhost:9200/movies
+
+### 6. bulk import data to build index
+PUT http://localhost:9200/_bulk?pretty HTTP/1.1
+Content-Type: application/json
+
+< ./moremovies.json
+
+### 7. test index
+GET http://localhost:9200/movies/_search?q=blade%20runner&pretty
+
+# IMPORT WITH CLIENT LIBRARIES
+# example with python
+# 1. install elasticsearch python package
+# pip3 install elasticsearch
+# 2. get python script
+# wget media.sundog-soft.com/es7/IndexRatings.py
+# 3. run script
+# python3 IndexRatings.py
+
+### test index 
+GET http://localhost:9200/ratings/_search?pretty
+
+# excercise
+# get script
+# wget media.sundog-soft.com/es7/IndexTags.py
+# 3. run script
+# python3 IndexTags.py
+
+### test index 
+GET http://localhost:9200/tags/_search?pretty
